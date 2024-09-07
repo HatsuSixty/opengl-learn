@@ -6,6 +6,20 @@
 
 #include "errors.hpp"
 
+int Shader::get_uniform_location(const std::string& name)
+{
+    if (m_locations.find(name) != m_locations.end()) {
+        return m_locations[name];
+    }
+
+    GLint loc;
+    gl_call(loc = glGetUniformLocation(m_program, name.c_str()));
+
+    m_locations[name] = loc;
+
+    return loc;
+}
+
 static GLuint compile_shader(GLenum type, const std::string& source)
 {
     GLuint id;
@@ -106,16 +120,10 @@ Shader::~Shader()
     gl(DeleteProgram, m_program);
 }
 
-int Shader::get_uniform_location(const char* name)
+void Shader::set_uniform_4f(const std::string& name, 
+                            float x, float y, float z, float w)
 {
-    GLint loc;
-    gl_call(loc = glGetUniformLocation(m_program, name));
-    return loc;
-}
-
-void Shader::set_uniform_4f(int loc, float x, float y, float z, float w)
-{
-    glUniform4f(loc, x, y, z, w);
+    glUniform4f(get_uniform_location(name), x, y, z, w);
 }
 
 void Shader::bind() const
