@@ -7,6 +7,7 @@
 
 #include "opengl/errors.hpp"
 #include "opengl/vertex_array.hpp"
+#include "opengl/shader.hpp"
 
 int main()
 {
@@ -50,17 +51,29 @@ int main()
 
     va->unbind_all();
 
+    Shader* shader = new Shader("resources/default_fragment_color.glsl");
+    int color_loc = shader->get_uniform_location("u_Color");
+
+    shader->bind();
+    shader->set_uniform_4f(color_loc, 1, 0, 0, 1);
+    shader->unbind();
+
     while (!glfwWindowShouldClose(window)) {
         gl(Clear, GL_COLOR_BUFFER_BIT);
+
+        shader->bind();
 
         va->bind();
         gl(DrawElements, GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr);
         va->unbind();
 
+        shader->unbind();
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
+    delete shader;
     delete va;
     glfwTerminate();
     

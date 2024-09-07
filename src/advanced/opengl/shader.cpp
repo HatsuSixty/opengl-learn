@@ -106,6 +106,18 @@ Shader::~Shader()
     gl(DeleteProgram, m_program);
 }
 
+int Shader::get_uniform_location(const char* name)
+{
+    GLint loc;
+    gl_call(loc = glGetUniformLocation(m_program, name));
+    return loc;
+}
+
+void Shader::set_uniform_4f(int loc, float x, float y, float z, float w)
+{
+    glUniform4f(loc, x, y, z, w);
+}
+
 void Shader::bind() const
 {
     gl(UseProgram, m_program);
