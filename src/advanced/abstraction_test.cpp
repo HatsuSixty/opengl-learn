@@ -6,110 +6,7 @@
 #include <GLFW/glfw3.h>
 
 #include "opengl/vertex_array.hpp"
-
-struct ShaderSources {
-    std::string vertex;
-    std::string fragment;
-};
-
-static ShaderSources parse_shader(const std::string& file_path)
-{
-    std::ifstream stream(file_path);
-
-    std::string vertex_source;
-    std::string fragment_source;
-    GLenum shader_mode = GL_VERTEX_SHADER;
-
-    std::string line;
-    while (getline(stream, line)) {
-        if (line.find("#shader") != std::string::npos) {
-            if (line.find("vertex") != std::string::npos)
-                shader_mode = GL_VERTEX_SHADER;
-            else if (line.find("fragment") != std::string::npos)
-                shader_mode = GL_FRAGMENT_SHADER;
-
-            continue;
-        }
-
-        if (shader_mode == GL_VERTEX_SHADER) {
-            vertex_source.append(line);
-            vertex_source.append("\n");
-        } else if (shader_mode == GL_FRAGMENT_SHADER) {
-            fragment_source.append(line);
-            fragment_source.append("\n");
-        }
-    }
-
-    return {
-        .vertex = vertex_source,
-        .fragment = fragment_source,
-    };
-}
-
-static GLuint compile_shader(GLenum type, const std::string& source)
-{
-    GLuint id = glCreateShader(type);
-    
-    const char* c_source = source.c_str();
-    glShaderSource(id, 1, &c_source, nullptr);
-    glCompileShader(id);
-
-    int result;
-    glGetShaderiv(id, GL_COMPILE_STATUS, &result);
-
-    if (result == GL_FALSE) {
-        int error_length;
-        glGetShaderiv(id, GL_INFO_LOG_LENGTH, &error_length);
-
-        char* error = (char*)alloca(error_length);
-        glGetShaderInfoLog(id, error_length, &error_length, error);
-
-        const char* shader_type = 
-            type == GL_VERTEX_SHADER ? "vertex" : "fragment";
-
-        std::cout << "ERROR: " << shader_type << " shader compilation: " 
-                  << error;
-
-        glDeleteShader(id);
-
-        return 0;
-    }
-
-    return id;
-}
-
-static GLuint create_shader(const std::string& shader_source)
-{
-    GLuint program = glCreateProgram();
-
-    ShaderSources sources = parse_shader(shader_source);
-
-    GLuint vert_shader = compile_shader(GL_VERTEX_SHADER, sources.vertex);
-    if (vert_shader == 0) {
-        glDeleteProgram(program);
-        return 0;
-    }
-
-    GLuint frag_shader = compile_shader(GL_FRAGMENT_SHADER, sources.fragment);
-    if (frag_shader == 0) {
-        glDeleteProgram(program);
-        return 0;
-    }
-
-    glAttachShader(program, vert_shader);
-    glAttachShader(program, frag_shader);
-
-    glLinkProgram(program);
-    glValidateProgram(program);
-
-    // Because the program was already linked and
-    // validated, we don't need the vertex and fragment
-    // shader anymore.
-    glDeleteShader(vert_shader);
-    glDeleteShader(frag_shader);
-
-    return program;
-}
+#include "opengl/shader.hpp"
 
 int main()
 {
@@ -224,8 +121,8 @@ int main()
     // so we'll just set `gl_Position` to the provided position.
     // See ./resources/default_vertex_color.glsl
 
-    GLuint shader = create_shader("resources/default_vertex_color.glsl");
-    if (shader == 0) {
+    Shader* shader = new Shader("resources/default_vertex_color.glsl");
+    if (!shader->valid) {
         return 1;
     }
 
@@ -238,7 +135,7 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Use the shader we created previously.
-        glUseProgram(shader);
+        shader->bind();
 
         // Bind the VAO before drawing.
         va->bind();
@@ -264,7 +161,7 @@ int main()
 
     // Cleanup: Delete VAO, VBO, IBO, shader program, and GLFW resources.
     delete va;
-    glDeleteProgram(shader);
+    delete shader;
     glfwDestroyWindow(window);
     glfwTerminate();
 
